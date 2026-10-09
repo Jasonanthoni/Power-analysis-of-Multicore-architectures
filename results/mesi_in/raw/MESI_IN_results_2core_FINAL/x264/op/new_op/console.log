@@ -1,0 +1,34 @@
+KeyboardInterrupt: <EMPTY MESSAGE>
+
+At:
+  /usr/lib/python3.12/ssl.py(1107): read
+  /usr/lib/python3.12/ssl.py(1252): recv_into
+  /usr/lib/python3.12/socket.py(711): readinto
+  /usr/lib/python3.12/http/client.py(297): _read_status
+  /usr/lib/python3.12/http/client.py(336): begin
+  /usr/lib/python3.12/http/client.py(1474): getresponse
+  /usr/lib/python3.12/urllib/request.py(1351): do_open
+  /usr/lib/python3.12/urllib/request.py(1392): https_open
+  /usr/lib/python3.12/urllib/request.py(492): _call_chain
+  /usr/lib/python3.12/urllib/request.py(532): _open
+  /usr/lib/python3.12/urllib/request.py(515): open
+  /usr/lib/python3.12/urllib/request.py(215): urlopen
+  src/python/gem5/resources/client_api/azure_functions_client.py(124): _functions_http_json_req
+  src/python/gem5/resources/client_api/azure_functions_client.py(178): get_resources
+  src/python/gem5/resources/client_api/abstract_client.py(190): get_resources_by_id
+  src/python/gem5/resources/client.py(331): _get_all_resources_by_id
+  src/python/gem5/resources/client.py(276): _get_resource_json_obj_from_client
+  src/python/gem5/resources/client.py(182): get_resource_json_obj
+  src/python/gem5/resources/resource.py(970): obtain_resource
+  /home/gem5/gem5/configs/deprecated/example/gem5_library/x86-parsec-benchmarks_MESI_IN.py(191): <module>
+  src/python/m5/main.py(687): main
+gem5 Simulator System.  https://www.gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 version 25.1.0.1
+gem5 compiled Sep  1 2026 09:10:22
+gem5 started Sep 29 2026 14:05:29
+gem5 executing on gem5-Vostro-3669, pid 52898
+command line: /home/gem5/gem5/build/X86_MESI_IN/gem5.opt -d /home/gem5/gem5/MESI_IN_results/x264/new_op /home/gem5/gem5/configs/deprecated/example/gem5_library/x86-parsec-benchmarks_MESI_IN.py --benchmark x264 --size simsmall
+
+info: Using default config

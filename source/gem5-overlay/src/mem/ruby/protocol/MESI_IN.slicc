@@ -1,0 +1,6 @@
+protocol "MESI_IN" use_secondary_load_linked;
+include "MESI_IN-msg.sm";
+include "MESI_IN-L1cache.sm";
+include "MESI_IN-L2cache.sm";
+include "MESI_IN-dir.sm";
+include "MESI_IN-dma.sm";

@@ -1,0 +1,1 @@
+streamcluster : FAILED (exit code 1, 7s)

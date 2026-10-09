@@ -1,0 +1,53 @@
+warn: Attempt 1 of Azure functions HTTP Request failed.
+Purpose of Request: Get Resources.
+Failed with Exception: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1000)>
+Response: None
+
+Retrying after 2 seconds...
+
+
+warn: Attempt 2 of Azure functions HTTP Request failed.
+Purpose of Request: Get Resources.
+Failed with Exception: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1000)>
+Response: None
+
+Retrying after 4 seconds...
+
+
+Exception thrown while getting resources '[<gem5.resources.client_api.client_query.ClientQuery object at 0x7e19452cb410>]' from client 'gem5-resources'
+
+AzureFunctionsAPIClientHttpJsonRequestError: Http Request to Azure Functions API failed.
+Azure Functions API URL: https://api.gem5.org/api/resources
+Data sent:
+
+[
+    {
+        "id": "x86-linux-kernel-4.19.83",
+        "resource_version": "1.0.0"
+    }
+]
+Response: None
+Purpose of Request: Get Resources
+
+
+
+At:
+  src/python/gem5/resources/client_api/azure_functions_client.py(138): _functions_http_json_req
+  src/python/gem5/resources/client_api/azure_functions_client.py(178): get_resources
+  src/python/gem5/resources/client_api/abstract_client.py(190): get_resources_by_id
+  src/python/gem5/resources/client.py(337): _get_all_resources_by_id
+  src/python/gem5/resources/client.py(276): _get_resource_json_obj_from_client
+  src/python/gem5/resources/client.py(182): get_resource_json_obj
+  src/python/gem5/resources/resource.py(970): obtain_resource
+  /home/gem5/gem5/configs/deprecated/example/gem5_library/x86-parsec-benchmarks_MESI_IN_16core.py(191): <module>
+  src/python/m5/main.py(687): main
+gem5 Simulator System.  https://www.gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 version 25.1.0.1
+gem5 compiled Sep  1 2026 09:10:22
+gem5 started Oct  9 2026 10:44:27
+gem5 executing on gem5-Vostro-3669, pid 187604
+command line: /home/gem5/gem5/build/X86_MESI_IN/gem5.opt -d /home/gem5/gem5/MESI_IN_results_16core/vips /home/gem5/gem5/configs/deprecated/example/gem5_library/x86-parsec-benchmarks_MESI_IN_16core.py --benchmark vips --size simsmall
+
+info: Using default config

@@ -1,0 +1,591 @@
+diff --git a/configs/deprecated/example/gem5_library/x86-parsec-benchmarks.py b/configs/deprecated/example/gem5_library/x86-parsec-benchmarks.py
+index 61f2c7d255..5772806d5c 100644
+--- a/configs/deprecated/example/gem5_library/x86-parsec-benchmarks.py
++++ b/configs/deprecated/example/gem5_library/x86-parsec-benchmarks.py
+@@ -58,7 +58,10 @@ from gem5.components.processors.simple_switchable_processor import (
+     SimpleSwitchableProcessor,
+ )
+ from gem5.isas import ISA
+-from gem5.resources.resource import obtain_resource
++from gem5.resources.resource import (
++    obtain_resource,
++    CustomDiskImageResource,
++)
+ from gem5.simulate.exit_event import ExitEvent
+ from gem5.simulate.simulator import Simulator
+ from gem5.utils.requires import requires
+@@ -190,7 +193,10 @@ board.set_kernel_disk_workload(
+     ),
+     # The x86-parsec image will be automatically downloaded to the
+     # `~/.cache/gem5` directory if not already present.
+-    disk_image=obtain_resource("x86-parsec", resource_version="1.0.0"),
++    disk_image=CustomDiskImageResource(
++    "/home/gem5/Research/parsec-tests/disk-image/parsec/parsec-image/parsec",
++    root_partition="1",
++),
+     readfile_contents=command,
+ )
+ 
+diff --git a/src/mem/ruby/protocol/Kconfig b/src/mem/ruby/protocol/Kconfig
+index 5b584fbedb..8801fb7533 100644
+--- a/src/mem/ruby/protocol/Kconfig
++++ b/src/mem/ruby/protocol/Kconfig
+@@ -34,6 +34,9 @@ config RUBY_PROTOCOL_MOESI_AMD_Base
+ config RUBY_PROTOCOL_MESI_Two_Level
+     bool "MESI two level"
+     default n
++config RUBY_PROTOCOL_MESI_IN
++    bool "MESI IN"
++    default n
+ config RUBY_PROTOCOL_MESI_Three_Level
+     bool "MESI three level"
+     default n
+diff --git a/src/mem/ruby/structures/RubyPrefetcher.cc b/src/mem/ruby/structures/RubyPrefetcher.cc
+index 26bb1358a9..0a285d0089 100644
+--- a/src/mem/ruby/structures/RubyPrefetcher.cc
++++ b/src/mem/ruby/structures/RubyPrefetcher.cc
+@@ -45,30 +45,33 @@
+ 
+ #include "base/bitfield.hh"
+ #include "debug/RubyPrefetcher.hh"
++#include "mem/ruby/slicc_interface/RubySlicc_ComponentMapping.hh"
+ #include "mem/ruby/system/RubySystem.hh"
+ 
+ namespace gem5
+ {
+-
+ namespace ruby
+ {
+-
+ RubyPrefetcher::RubyPrefetcher(const Params &p)
+-    : SimObject(p), m_num_streams(p.num_streams),
+-    m_array(p.num_streams, p.block_size), m_train_misses(p.train_misses),
++    : SimObject(p), 
++    //m_ruby_system(p.ruby_system), // newly added line by JM
++    m_num_streams(p.num_streams),
++    m_block_size(p.block_size),  // added later
++    m_array(p.num_streams,p.block_size), m_train_misses(p.train_misses),
+     m_num_startup_pfs(p.num_startup_pfs),
+     unitFilter(p.unit_filter),
+     negativeFilter(p.unit_filter),
+     nonUnitFilter(p.nonunit_filter),
+     m_prefetch_cross_pages(p.cross_page),
+     pageShift(p.page_shift),
+-    m_block_size_bits(floorLog2(p.block_size)),
+-    m_block_size_bytes(p.block_size),
++    m_block_size_bits(floorLog2(p.block_size_bits)),    //modified
++    m_block_size_bytes(p.block_size_bytes),  
++               //modified
+     rubyPrefetcherStats(this)
+ {
+     assert(m_num_streams > 0);
+     assert(m_num_startup_pfs <= MAX_PF_INFLIGHT);
+-}
++} // 1
+ 
+ RubyPrefetcher::
+ RubyPrefetcherStats::RubyPrefetcherStats(statistics::Group *parent)
+@@ -85,53 +88,55 @@ RubyPrefetcherStats::RubyPrefetcherStats(statistics::Group *parent)
+       ADD_STAT(numMissedPrefetchedBlocks, "Number of misses for blocks that "
+                                           "were prefetched, yet missed")
+ {
+-}
++} //2
+ 
+-void
+-RubyPrefetcher::observeMiss(Addr address, const RubyRequestType& type)
++void RubyPrefetcher::observeMiss(Addr address, const RubyRequestType& type)
+ {
+-    DPRINTF(RubyPrefetcher, "Observed miss for %#x\n", address);
+-    Addr line_addr = makeLineAddress(address, m_block_size_bits);
++    DPRINTF(RubyPrefetcher, "Observed miss for %#x\n", address);   // facing error here due to single argument 
++    Addr line_addr = makeLineAddress(address,m_block_size_bits);
+     rubyPrefetcherStats.numMissObserved++;
+ 
+-    // check to see if we have already issued a prefetch for this block
+     uint32_t index = 0;
+     PrefetchEntry *pfEntry = getPrefetchEntry(line_addr, index);
++    
+     if (pfEntry != NULL) {
+         if (pfEntry->requestIssued[index]) {
+             if (pfEntry->requestCompleted[index]) {
+-                // We prefetched too early and now the prefetch block no
+-                // longer exists in the cache
+                 rubyPrefetcherStats.numMissedPrefetchedBlocks++;
++
++                // 🔹 Reduce confidence since prefetch was too early
++                if (pfEntry->confidence > 0) {
++                    pfEntry->confidence--;
++                }      //7
+                 return;
+-            } else {
+-                // The controller has issued the prefetch request,
+-                // but the request for the block arrived earlier.
++            } else {         //6
+                 rubyPrefetcherStats.numPartialHits++;
+                 observePfMiss(line_addr);
++
++                // 🔹 Increase confidence if prefetch was useful
++                pfEntry->confidence++;
+                 return;
+             }
+-        } else {
+-            // The request is still in the prefetch queue of the controller.
+-            // Or was evicted because of other requests.
+-            return;
+-        }
+-    }
++        }   //5
++        return;
++    } //4
+ 
+-    // Check if address is in any of the stride filters
++    // 🔹 Adjust stride based on confidence
+     if (accessUnitFilter(&unitFilter, line_addr, 1, type)) {
+         DPRINTF(RubyPrefetcher, "  *** hit in unit stride buffer\n");
+         return;
+-    }
++    } //8
++
+     if (accessUnitFilter(&negativeFilter, line_addr, -1, type)) {
+         DPRINTF(RubyPrefetcher, "  *** hit in unit negative unit buffer\n");
+         return;
+-    }
++    } //9
++
+     if (accessNonunitFilter(line_addr, type)) {
+         DPRINTF(RubyPrefetcher, "  *** hit in non-unit stride buffer\n");
+         return;
+-    }
+-}
++    }   //10
++}  //3
+ 
+ void
+ RubyPrefetcher::observePfMiss(Addr address)
+@@ -139,7 +144,7 @@ RubyPrefetcher::observePfMiss(Addr address)
+     rubyPrefetcherStats.numPartialHits++;
+     DPRINTF(RubyPrefetcher, "Observed partial hit for %#x\n", address);
+     issueNextPrefetch(address, NULL);
+-}
++} //11
+ 
+ void
+ RubyPrefetcher::observePfHit(Addr address)
+@@ -147,45 +152,51 @@ RubyPrefetcher::observePfHit(Addr address)
+     rubyPrefetcherStats.numHits++;
+     DPRINTF(RubyPrefetcher, "Observed hit for %#x\n", address);
+     issueNextPrefetch(address, NULL);
+-}
++} //12
+ 
+-void
+-RubyPrefetcher::issueNextPrefetch(Addr address, PrefetchEntry *stream)
++void RubyPrefetcher::issueNextPrefetch(Addr address, PrefetchEntry *stream)
+ {
+-    // get our corresponding stream fetcher
+     if (stream == NULL) {
+         uint32_t index = 0;
+         stream = getPrefetchEntry(address, index);
+-    }
++    } //13
+ 
+-    // if (for some reason), this stream is unallocated, return.
+     if (stream == NULL) {
+         DPRINTF(RubyPrefetcher, "Unallocated stream, returning\n");
+         return;
+-    }
++    }  //14
+ 
+-    // extend this prefetching stream by 1 (or more)
+     Addr page_addr = pageAddress(stream->m_address);
+-    Addr line_addr = makeNextStrideAddress(stream->m_address,
+-                                         stream->m_stride);
+-
+-    // possibly stop prefetching at page boundaries
+-    if (page_addr != pageAddress(line_addr)) {
+-        if (!m_prefetch_cross_pages) {
+-            // Deallocate the stream since we are not prefetching
+-            // across page boundries
++    Addr line_addr = makeNextStrideAddress(stream->m_address, stream->m_stride);
++
++    // 🔹 Increase prefetch distance if confidence is high
++    if (stream->confidence >= 3) {
++        stream->prefetch_distance = 2;  // Prefetch further ahead
++    } else if (stream->confidence == 0) {   //14
++        stream->prefetch_distance = 1;  // Reduce prefetching
++    }   //15
++
++    // 🔹 Stop prefetching if confidence is too low
++    if (stream->confidence < 0) {
++        stream->m_is_valid = false;
++        return;
++    }   //16
++
++    for (int i = 0; i < stream->prefetch_distance; i++) {
++        line_addr = makeNextStrideAddress(stream->m_address, stream->m_stride);
++        
++        if (page_addr != pageAddress(line_addr) && !m_prefetch_cross_pages) {
+             stream->m_is_valid = false;
+             return;
+-        }
+-        rubyPrefetcherStats.numPagesCrossed++;
+-    }
++        }  //18
++
++        rubyPrefetcherStats.numPrefetchRequested++;
++        stream->m_address = line_addr;
++        stream->m_use_time = m_controller->curCycle();
+ 
+-    // launch next prefetch
+-    rubyPrefetcherStats.numPrefetchRequested++;
+-    stream->m_address = line_addr;
+-    stream->m_use_time = m_controller->curCycle();
+-    DPRINTF(RubyPrefetcher, "Requesting prefetch for %#x\n", line_addr);
+-    m_controller->enqueuePrefetch(line_addr, stream->m_type);
++        DPRINTF(RubyPrefetcher, "Requesting adaptive prefetch for %#x\n", line_addr);
++        m_controller->enqueuePrefetch(line_addr, stream->m_type);
++    }   //17
+ }
+ 
+ uint32_t
+@@ -197,59 +208,51 @@ RubyPrefetcher::getLRUindex(void)
+     for (uint32_t i = 0; i < m_num_streams; i++) {
+         if (!m_array[i].m_is_valid) {
+             return i;
+-        }
++        }   //20
+         if (m_array[i].m_use_time < lru_access) {
+             lru_access = m_array[i].m_use_time;
+             lru_index = i;
+-        }
+-    }
++        }   //21
++    }  //19
+ 
+     return lru_index;
+-}
++}  //18
+ 
+-void
+-RubyPrefetcher::initializeStream(Addr address, int stride,
+-     uint32_t index, const RubyRequestType& type)
++void RubyPrefetcher::initializeStream(Addr address, int stride, uint32_t index, const RubyRequestType& type)
+ {
+     rubyPrefetcherStats.numAllocatedStreams++;
+ 
+-    // initialize the stream prefetcher
+     PrefetchEntry *mystream = &(m_array[index]);
+-    mystream->m_address = makeLineAddress(address, m_block_size_bits);
++    mystream->m_address = makeLineAddress(address,m_block_size_bits);
+     mystream->m_stride = stride;
+     mystream->m_use_time = m_controller->curCycle();
+     mystream->m_is_valid = true;
+     mystream->m_type = type;
++    mystream->confidence = 1;  // 🔹 Start with low confidence
++    mystream->prefetch_distance = 1; // 🔹 Start conservatively
+ 
+-    // create a number of initial prefetches for this stream
+     Addr page_addr = pageAddress(mystream->m_address);
+-    Addr line_addr = makeLineAddress(mystream->m_address, m_block_size_bits);
++    Addr line_addr = makeLineAddress(mystream->m_address,m_block_size_bits);
+ 
+-    // insert a number of prefetches into the prefetch table
+-    for (int k = 0; k < m_num_startup_pfs; k++) {
++    for (int k = 0; k < mystream->prefetch_distance; k++) {
+         line_addr = makeNextStrideAddress(line_addr, stride);
+-        // possibly stop prefetching at page boundaries
+-        if (page_addr != pageAddress(line_addr)) {
+-            if (!m_prefetch_cross_pages) {
+-                // deallocate this stream prefetcher
+-                mystream->m_is_valid = false;
+-                return;
+-            }
+-            rubyPrefetcherStats.numPagesCrossed++;
++
++        if (page_addr != pageAddress(line_addr)){
++        	if(!m_prefetch_cross_pages){
++            mystream->m_is_valid = false;
++            return;
+         }
+ 
+-        // launch prefetch
+         rubyPrefetcherStats.numPrefetchRequested++;
+-        DPRINTF(RubyPrefetcher, "Requesting prefetch for %#x\n", line_addr);
+-        m_controller->enqueuePrefetch(line_addr, m_array[index].m_type);
++        DPRINTF(RubyPrefetcher, "Requesting adaptive prefetch for %#x\n", line_addr);
++        m_controller->enqueuePrefetch(line_addr, mystream[index].m_type);
+     }
+ 
+-    // update the address to be the last address prefetched
+     mystream->m_address = line_addr;
+ }
+-
+-PrefetchEntry *
+-RubyPrefetcher::getPrefetchEntry(Addr address, uint32_t &index)
++}
++PrefetchEntry* // Full qualified return type  modified
++RubyPrefetcher::getPrefetchEntry(Addr address, uint32_t &index)   // modified
+ {
+     // search all streams for a match
+     for (int i = 0; i < m_num_streams; i++) {
+@@ -266,8 +269,9 @@ RubyPrefetcher::getPrefetchEntry(Addr address, uint32_t &index)
+     return NULL;
+ }
+ 
+-bool
+-RubyPrefetcher::accessUnitFilter(CircularQueue<UnitFilterEntry>* const filter,
++
++
++bool RubyPrefetcher::accessUnitFilter(CircularQueue<UnitFilterEntry>* const filter,
+     Addr line_addr, int stride, const RubyRequestType& type)
+ {
+     for (auto& entry : *filter) {
+@@ -289,8 +293,7 @@ RubyPrefetcher::accessUnitFilter(CircularQueue<UnitFilterEntry>* const filter,
+     return false;
+ }
+ 
+-bool
+-RubyPrefetcher::accessNonunitFilter(Addr line_addr,
++bool RubyPrefetcher::accessNonunitFilter(Addr line_addr,
+     const RubyRequestType& type)
+ {
+     /// look for non-unit strides based on a (user-defined) page size
+@@ -313,7 +316,8 @@ RubyPrefetcher::accessNonunitFilter(Addr line_addr,
+                         // This stride HAS to be the multiplicative constant of
+                         // dataBlockBytes (bc makeNextStrideAddress is
+                         // calculated based on this multiplicative constant!)
+-                        const int stride = entry.stride / m_block_size_bytes;
++                        const int stride = entry.stride /m_block_size_bytes;
++                            // m_ruby_system -> getBlockSizeBytes();
+ 
+                         // clear this filter entry
+                         entry.clear();
+@@ -342,8 +346,7 @@ RubyPrefetcher::accessNonunitFilter(Addr line_addr,
+     return false;
+ }
+ 
+-void
+-RubyPrefetcher::print(std::ostream& out) const
++void RubyPrefetcher::print(std::ostream& out) const
+ {
+     out << name() << " Prefetcher State\n";
+     // print out unit filter
+@@ -368,7 +371,7 @@ RubyPrefetcher::print(std::ostream& out) const
+     // print out allocated stream buffers
+     out << "streams:\n";
+     for (int i = 0; i < m_num_streams; i++) {
+-        out << m_array[i].m_address << " "
++        out << m_array[i].m_address << " "  
+             << m_array[i].m_stride << " "
+             << m_array[i].m_is_valid << " "
+             << m_array[i].m_use_time << std::endl;
+@@ -380,6 +383,6 @@ RubyPrefetcher::pageAddress(Addr addr) const
+ {
+     return mbits<Addr>(addr, 63, pageShift);
+ }
+-
+ } // namespace ruby
+ } // namespace gem5
++
+diff --git a/src/mem/ruby/structures/RubyPrefetcher.hh b/src/mem/ruby/structures/RubyPrefetcher.hh
+index 5627410713..506aab7ea4 100644
+--- a/src/mem/ruby/structures/RubyPrefetcher.hh
++++ b/src/mem/ruby/structures/RubyPrefetcher.hh
+@@ -63,7 +63,6 @@ namespace gem5
+ 
+ namespace ruby
+ {
+-
+ class PrefetchEntry
+ {
+     public:
+@@ -74,8 +73,7 @@ class PrefetchEntry
+             m_stride   = (1 << floorLog2(block_size));
+             m_use_time = Cycles(0);
+             m_is_valid = false;
+-        }
+-
++       }
+         //! The base address for the stream prefetch
+         Addr m_address;
+ 
+@@ -90,11 +88,18 @@ class PrefetchEntry
+ 
+         //! L1D prefetches loads and stores
+         RubyRequestType m_type;
+-
++        int confidence;   //newly added 
++        int prefetch_distance;  //newly added
++        
+         //! Bitset for tracking prefetches for which addresses have been
+         //! issued, which ones have completed.
+         std::bitset<MAX_PF_INFLIGHT> requestIssued;
+         std::bitset<MAX_PF_INFLIGHT> requestCompleted;
++        
++        
++        
++       // PrefetchEntry() : m_address(0), m_stride(0), m_use_time(0),
++                     //m_is_valid(false), confidence(1), prefetch_distance(1) {}
+ };
+ 
+ class RubyPrefetcher : public SimObject
+@@ -103,7 +108,9 @@ class RubyPrefetcher : public SimObject
+         typedef RubyPrefetcherParams Params;
+         RubyPrefetcher(const Params &p);
+         ~RubyPrefetcher() = default;
+-
++        int m_block_size;    // added later
++        void print(std::ostream& out) const;
++       
+         void issueNextPrefetch(Addr address, PrefetchEntry *stream);
+         /**
+          * Implement the prefetch hit(miss) callback interface.
+@@ -124,7 +131,7 @@ class RubyPrefetcher : public SimObject
+         /**
+          * Print out some statistics
+          */
+-        void print(std::ostream& out) const;
++        
+         void setController(AbstractController *_ctrl)
+         { m_controller = _ctrl; }
+ 
+@@ -167,6 +174,8 @@ class RubyPrefetcher : public SimObject
+          * @return  The index of the least recently used stream buffer.
+          */
+         uint32_t getLRUindex(void);
++        //int m_block_size_bits;   //newly added
++        //int m_block_size_bytes;   //newly added
+ 
+         //! allocate a new stream buffer at a specific index
+         void initializeStream(Addr address, int stride,
+@@ -174,8 +183,7 @@ class RubyPrefetcher : public SimObject
+ 
+         //! get pointer to the matching stream entry, returns NULL if not found
+         //! index holds the multiple of the stride this address is.
+-        PrefetchEntry* getPrefetchEntry(Addr address,
+-            uint32_t &index);
++        PrefetchEntry* getPrefetchEntry(Addr address, uint32_t &index);
+ 
+         /**
+          * Access a unit stride filter to determine if there is a hit, and
+@@ -238,10 +246,8 @@ class RubyPrefetcher : public SimObject
+         AbstractController *m_controller;
+ 
+         const unsigned pageShift;
+-
+-        int m_block_size_bits = 0;
+-        int m_block_size_bytes = 0;
+-
++        int m_block_size_bits=0;
++        int m_block_size_bytes=0;
+         Addr
+         makeNextStrideAddress(Addr addr, int stride) const
+         {
+diff --git a/src/mem/ruby/structures/RubyPrefetcher.py b/src/mem/ruby/structures/RubyPrefetcher.py
+index 686960e996..87252a0dbc 100644
+--- a/src/mem/ruby/structures/RubyPrefetcher.py
++++ b/src/mem/ruby/structures/RubyPrefetcher.py
+@@ -36,37 +36,41 @@
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
++from m5.objects.System import System
++from m5.SimObject import SimObject
+ from m5.params import *
+ from m5.proxy import *
+-from m5.SimObject import SimObject
++
++from m5.objects.System import System
+ 
+ 
+ class RubyPrefetcher(SimObject):
+     type = "RubyPrefetcher"
+     cxx_class = "gem5::ruby::RubyPrefetcher"
+     cxx_header = "mem/ruby/structures/RubyPrefetcher.hh"
+-
++    block_size = Param.Int("Cache block size in bytes")   # added later
++   # ruby_system= Param.RubySystem("Ruby system pointer")  # line added by JM
+     num_streams = Param.UInt32(4, "Number of prefetch streams to be allocated")
+     unit_filter = Param.UInt32(8, "Number of entries in the unit filter array")
+-    nonunit_filter = Param.UInt32(
+-        8, "Number of entries in the non-unit filter array"
+-    )
++    nonunit_filter = Param.UInt32(8, "Number of entries in the non-unit filter array")
+     train_misses = Param.UInt32(4, "")
+     num_startup_pfs = Param.UInt32(1, "")
+-    cross_page = Param.Bool(
+-        False,
+-        """True if prefetched address can be on a
+-            page different from the observed address""",
+-    )
+-    page_shift = Param.UInt32(
+-        12, "Number of bits to mask to get a page number"
+-    )
+-    block_size = Param.UInt32(
+-        "Size of block to prefetch, usually cache line size"
+-    )
++    cross_page = Param.Bool(False,"""True if prefetched address can be on a
++            page different from the observed address""", )
++    page_shift = Param.UInt32(12, "Number of bits to mask to get a page number")
++    enable_dynamic_adjustment = Param.Bool(True, "Enable adaptive adjustment of streams")
++    adjust_threshold = Param.UInt32(100, "Events after which prefetch parameters are re-evaluated")
++    block_size_bits=Param.UInt32(64,"")
++    block_size_bytes=Param.UInt32(64,"")
++    pass
++    
+ 
+ 
+-class Prefetcher(RubyPrefetcher):
+-    """DEPRECATED"""
++#class Prefetcher(RubyPrefetcher):
++   # """DEPRECATED"""
++   # enable_dynamic_adjustment = Param.Bool(True, "Enable adaptive adjustment of streams")
++   # adjust_threshold = Param.UInt32(100, "Events after which prefetch parameters are re-evaluated")
++   # pass
+ 
+-    pass
++#RubyPrefetcher.py
++#Displaying RubyPrefetcher.cc
+diff --git a/src/python/SConscript b/src/python/SConscript
+index 3704e1ed33..108a8454b0 100644
+--- a/src/python/SConscript
++++ b/src/python/SConscript
+@@ -140,6 +140,8 @@ PySource('gem5.components.cachehierarchies.ruby',
+     'gem5/components/cachehierarchies/ruby/abstract_ruby_cache_hierarchy.py')
+ PySource('gem5.components.cachehierarchies.ruby',
+     'gem5/components/cachehierarchies/ruby/mesi_two_level_cache_hierarchy.py')
++PySource('gem5.components.cachehierarchies.ruby',
++    'gem5/components/cachehierarchies/ruby/mesi_in_cache_hierarchy.py')
+ PySource('gem5.components.cachehierarchies.ruby',
+     'gem5/components/cachehierarchies/ruby/'
+     'mesi_three_level_cache_hierarchy.py')
+@@ -173,6 +175,16 @@ PySource('gem5.components.cachehierarchies.ruby.caches.mesi_three_level',
+ PySource('gem5.components.cachehierarchies.ruby.caches.mesi_three_level',
+     'gem5/components/cachehierarchies/ruby/caches/mesi_three_level/'
+     'l2_cache.py')
++PySource('gem5.components.cachehierarchies.ruby.caches.mesi_in',
++    'gem5/components/cachehierarchies/ruby/caches/mesi_in/__init__.py')
++PySource('gem5.components.cachehierarchies.ruby.caches.mesi_in',
++    'gem5/components/cachehierarchies/ruby/caches/mesi_in/directory.py')
++PySource('gem5.components.cachehierarchies.ruby.caches.mesi_in',
++    'gem5/components/cachehierarchies/ruby/caches/mesi_in/dma_controller.py')
++PySource('gem5.components.cachehierarchies.ruby.caches.mesi_in',
++    'gem5/components/cachehierarchies/ruby/caches/mesi_in/l1_cache.py')
++PySource('gem5.components.cachehierarchies.ruby.caches.mesi_in',
++    'gem5/components/cachehierarchies/ruby/caches/mesi_in/l2_cache.py')
+ PySource('gem5.components.cachehierarchies.ruby.caches.mesi_three_level',
+     'gem5/components/cachehierarchies/ruby/caches/mesi_three_level/'
+     'l3_cache.py')
+diff --git a/src/python/gem5/coherence_protocol.py b/src/python/gem5/coherence_protocol.py
+index b4556858e9..49c15ba87f 100644
+--- a/src/python/gem5/coherence_protocol.py
++++ b/src/python/gem5/coherence_protocol.py
+@@ -39,6 +39,7 @@ class CoherenceProtocol(Enum):
+     AMD_MOESI_HAMMER = "AMD_MOESI_hammer"
+     GARNET_STANDALONE = "Garnet_standalone"
+     MESI_TWO_LEVEL = "MESI_Two_Level"
++    MESI_IN = "MESI_IN"
+     MOESI_CMP_DIRECTORY = "MOESI_CMP_directory"
+     MOESI_CMP_TOKEN = "MOESI_CMP_token"
+     MOESI_AMD_BASE = "MOESI_AMD_Base"

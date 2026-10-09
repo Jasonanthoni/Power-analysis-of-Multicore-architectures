@@ -1,0 +1,58 @@
+warn: Resource x86-linux-kernel-4.19.83 is not compatible with gem5 version 25.1.0.1.
+warn: The `CustomDiskImageResource` class is deprecated. Please use `DiskImageResource` instead.
+warn: Resource x86-linux-kernel-4.19.83 is not compatible with gem5 version 25.1.0.1.
+Global frequency set at 1000000000000 ticks per second
+warn: board.workload.acpi_description_table_pointer.rsdt adopting orphan SimObject param 'entries'
+src/mem/dram_interface.cc:690: warn: DRAM device capacity (16384 Mbytes) does not match the address range assigned (2048 Mbytes)
+src/mem/dram_interface.cc:690: warn: DRAM device capacity (16384 Mbytes) does not match the address range assigned (2048 Mbytes)
+src/sim/kernel_workload.cc:46: info: kernel located at: /home/gem5/.cache/gem5/x86-linux-kernel-4.19.83-1.0.0
+src/base/statistics.hh:279: warn: One of the stats is a legacy stat. Legacy stat is a stat that does not belong to any statistics::Group. Legacy stat is deprecated.
+      0: board.pc.south_bridge.cmos.rtc: Real-time clock set to Sun Jan  1 00:00:00 2012
+board.pc.com_1.device: Listening for connections on port 3456
+src/base/statistics.hh:279: warn: One of the stats is a legacy stat. Legacy stat is a stat that does not belong to any statistics::Group. Legacy stat is deprecated.
+src/dev/intel_8254_timer.cc:128: warn: Reading current count from inactive timer.
+board.remote_gdb: Listening for connections on port 7000
+src/cpu/kvm/base.cc:169: info: KVM: Coalesced MMIO disabled by config.
+src/cpu/kvm/base.cc:169: info: KVM: Coalesced MMIO disabled by config.
+src/cpu/kvm/base.cc:591: hack: Pretending totalOps is equivalent to totalInsts()
+gem5 Simulator System.  https://www.gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 version 25.1.0.1
+gem5 compiled Sep  1 2026 09:10:22
+gem5 started Sep 26 2026 12:44:49
+gem5 executing on gem5-Vostro-3669, pid 8437
+command line: /home/gem5/gem5/build/X86_MESI_IN/gem5.opt -d /home/gem5/gem5/MESI_IN_results/ferret /home/gem5/gem5/configs/deprecated/example/gem5_library/x86-parsec-benchmarks_MESI_IN.py --benchmark ferret --size simsmall
+
+info: Using default config
+Running the simulation
+Using KVM cpu
+src/cpu/kvm/perfevent.cc:176: src/cpu/kvm/perfevent.cc:176: panic: PerfKvmCounter::attach received error EACCESS.
+  This error may be caused by a too restrictive setting
+  in the file '/proc/sys/kernel/perf_event_paranoid'.
+  The default value was changed to 2 in kernel 4.6.
+  A value greater than 1 prevents gem5 from making
+  the syscall to perf_event_open.
+    Alternatively, you can set the usePerf flag of the KVM
+  CPU to False. Setting this flag to False will limit some
+  functionalities of KVM CPU, such as counting the number of
+  cycles and the number of instructions, as well as the
+  ability of exiting to gem5 after a certain amount of cycles
+  or instructions when using KVM CPU. An example can be found
+  here, configs/example/gem5_library/x86-ubuntu-run-with-kvm-no-perf.py.
+panic: PerfKvmCounter::attach received error EACCESS.
+  This error may be caused by a too restrictive setting
+  in the file '/proc/sys/kernel/perf_event_paranoid'.
+  The default value was changed to 2 in kernel 4.6.
+  A value greater than 1 prevents gem5 from making
+  the syscall to perf_event_open.
+    Alternatively, you can set the usePerf flag of the KVM
+  CPU to False. Setting this flag to False will limit some
+  functionalities of KVM CPU, such as counting the number of
+  cycles and the number of instructions, as well as the
+  ability of exiting to gem5 after a certain amount of cycles
+  or instructions when using KVM CPU. An example can be found
+  here, configs/example/gem5_library/x86-ubuntu-run-with-kvm-no-perf.py.
+Memory Usage: 3883944 KBytes
+Memory Usage: 3883944 KBytes
+Program aborted at tick 0
