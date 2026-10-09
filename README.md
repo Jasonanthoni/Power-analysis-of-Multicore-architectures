@@ -81,35 +81,53 @@ The project follows a simulation-to-analysis workflow.
 ## Repository Structure
 
 ```text
-multicore-power-analysis/
+Power-analysis-of-Multicore-architectures/
 │
 ├── README.md
+├── goal2_mcpat_pipeline.md
+├── july9_baseline_configuration.md
+├── research_notes.md
 │
 ├── configs/
 │   ├── baseline/
 │   ├── adaptive_prefetching/
-│   ├── mesi_in/
-│   └── combined/
+│   ├── combined/
+│   └── mesi_in/
+│       ├── MESI_IN.py
+│       ├── x86-parsec-benchmarks_MESI_IN.py
+│       ├── x86-parsec-benchmarks_MESI_IN_16core.py
+│       └── x86-parsec-benchmarks_MESI_IN_2core.py
 │
 ├── scripts/
-│   └── README.md
+│   ├── README.md
+│   └── mesi_in/
+│       ├── run_all_mesi_in.sh
+│       ├── run_all_rem_mesi_in.sh
+│       ├── run_remaining_mesi_in.sh
+│       └── run_remaining_mesi_in_16core.sh
+│
+├── source/
+│   ├── GEM5_BASE_REVISION.txt
+│   ├── gem5-overlay/
+│   │   └── src/
+│   │       ├── mem/
+│   │       │   └── ruby/
+│   │       │       ├── protocol/
+│   │       │       └── structures/
+│   │       └── python/
+│   └── patches/
+│       └── gem5-research-changes.patch
 │
 ├── mcpat/
 │   └── README.md
 │
 ├── results/
-│   ├── performance/
-│   │   ├── baseline/
-│   │   ├── adaptive_prefetching/
-│   │   ├── mesi_in/
-│   │   └── combined/
-│   │
-│   ├── power/
-│   │   ├── baseline/
-│   │   ├── adaptive_prefetching/
-│   │   └── combined/
-│   │
-│   └── README.md
+│   └── mesi_in/
+│       └── raw/
+│           ├── MESI_IN_results/
+│           ├── MESI_IN_results_16core/
+│           ├── MESI_IN_results_2core_FINAL/
+│           └── MESI_IN_results_complete.tar.gz
 │
 ├── analysis/
 │   ├── README.md
@@ -124,8 +142,7 @@ multicore-power-analysis/
     └── reports/
 ```
 
-*This tree describes the intended organisation of the repository. Directories and filenames may evolve as the project develops.*
-
+*This tree reflects the repository's current organization, including the MESI-IN implementation, configuration files, simulation scripts, source-code overlay, and archived raw results. Some directories remain placeholders for future baseline, adaptive-prefetching, combined-configuration, and analysis work. The compiled gem5 executable and PARSEC disk image are maintained separately and are not included in this tree.*
 ## Directory Guide
 
 ### `configs/`
