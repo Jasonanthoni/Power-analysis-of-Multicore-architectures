@@ -84,16 +84,20 @@ The project follows a simulation-to-analysis workflow.
 Power-analysis-of-Multicore-architectures/
 │
 ├── README.md
+├── .gitignore
 ├── goal2_mcpat_pipeline.md
 ├── july9_baseline_configuration.md
 ├── research_notes.md
 │
 ├── configs/
 │   ├── baseline/
+│   │   └── x86-parsec-benchmarks_BASELINE.py
 │   │
 │   ├── adaptive_prefetching/
+│   │   └── x86-parsec-benchmarks_adaptive_16core.py
 │   │
 │   ├── combined/
+│   │   └── x86-parsec-benchmarks_AP_MESI_IN_16core.py
 │   │
 │   ├── mesi_in/
 │   │   ├── MESI_IN.py
@@ -109,11 +113,18 @@ Power-analysis-of-Multicore-architectures/
 │
 ├── scripts/
 │   ├── README.md
-│   └── mesi_in/
-│       ├── run_all_mesi_in.sh
-│       ├── run_all_rem_mesi_in.sh
-│       ├── run_remaining_mesi_in.sh
-│       └── run_remaining_mesi_in_16core.sh
+│   ├── adaptive_prefetching/
+│   │   ├── run_all_adaptive.sh
+│   │   └── run_all_adaptive_16core.sh
+│   │
+│   ├── mesi_in/
+│   │   ├── run_all_mesi_in.sh
+│   │   ├── run_all_rem_mesi_in.sh
+│   │   ├── run_remaining_mesi_in.sh
+│   │   └── run_remaining_mesi_in_16core.sh
+│   │
+│   └── combined/
+│       └── README.md
 │
 ├── source/
 │   ├── GEM5_BASE_REVISION.txt
@@ -123,8 +134,38 @@ Power-analysis-of-Multicore-architectures/
 │   │       ├── mem/
 │   │       │   └── ruby/
 │   │       │       ├── protocol/
+│   │       │       │   ├── Kconfig
+│   │       │       │   ├── MESI_IN-L1cache.sm
+│   │       │       │   ├── MESI_IN-L2cache.sm
+│   │       │       │   ├── MESI_IN-dir.sm
+│   │       │       │   ├── MESI_IN-dma.sm
+│   │       │       │   ├── MESI_IN-msg.sm
+│   │       │       │   └── MESI_IN.slicc
+│   │       │       │
 │   │       │       └── structures/
+│   │       │           ├── RubyPrefetcher.cc
+│   │       │           ├── RubyPrefetcher.hh
+│   │       │           └── RubyPrefetcher.py
+│   │       │
 │   │       └── python/
+│   │           ├── SConscript
+│   │           └── gem5/
+│   │               ├── coherence_protocol.py
+│   │               └── components/
+│   │                   └── cachehierarchies/
+│   │                       └── ruby/
+│   │                           ├── mesi_in_cache_hierarchy.py
+│   │                           ├── mesi_two_level_cache_hierarchy.py
+│   │                           └── caches/
+│   │                               ├── mesi_in/
+│   │                               │   ├── __init__.py
+│   │                               │   ├── directory.py
+│   │                               │   ├── dma_controller.py
+│   │                               │   ├── l1_cache.py
+│   │                               │   └── l2_cache.py
+│   │                               │
+│   │                               └── mesi_two_level/
+│   │                                   └── l1_cache.py
 │   │
 │   ├── adaptive_prefetcher_overlay/
 │   │   ├── README.md
@@ -134,7 +175,6 @@ Power-analysis-of-Multicore-architectures/
 │   │       │       ├── protocol/
 │   │       │       │   ├── MESI_IN-L1cache.sm
 │   │       │       │   └── MESI_Two_Level-L1cache.sm
-│   │       │       │
 │   │       │       └── structures/
 │   │       │           ├── RubyPrefetcher.cc
 │   │       │           ├── RubyPrefetcher.hh
@@ -156,16 +196,42 @@ Power-analysis-of-Multicore-architectures/
 │   └── patches/
 │       └── gem5-research-changes.patch
 │
+├── results/
+│   ├── baseline/
+│   │   └── raw/
+│   │       ├── blackscholes/
+│   │       │   ├── stats.txt
+│   │       │   ├── config.ini
+│   │       │   ├── config.json
+│   │       │   └── readfile_*.rcS
+│   │       ├── bodytrack/
+│   │       ├── canneal/
+│   │       ├── dedup/
+│   │       ├── facesim/
+│   │       ├── ferret/
+│   │       ├── fluidanimate/
+│   │       ├── freqmine/
+│   │       ├── raytrace/
+│   │       ├── streamcluster/
+│   │       ├── swaptions/
+│   │       ├── vips/
+│   │       └── x264/
+│   │
+│   ├── adaptive_prefetching/
+│   │   └── raw/
+│   │
+│   ├── mesi_in/
+│   │   └── raw/
+│   │       ├── MESI_IN_results/
+│   │       ├── MESI_IN_results_16core/
+│   │       ├── MESI_IN_results_2core_FINAL/
+│   │       └── MESI_IN_results_complete.tar.gz
+│   │
+│   └── combined/
+│       └── raw/
+│
 ├── mcpat/
 │   └── README.md
-│
-├── results/
-│   └── mesi_in/
-│       └── raw/
-│           ├── MESI_IN_results/
-│           ├── MESI_IN_results_16core/
-│           ├── MESI_IN_results_2core_FINAL/
-│           └── MESI_IN_results_complete.tar.gz
 │
 ├── analysis/
 │   ├── README.md
