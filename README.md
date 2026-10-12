@@ -90,13 +90,22 @@ Power-analysis-of-Multicore-architectures/
 │
 ├── configs/
 │   ├── baseline/
+│   │
 │   ├── adaptive_prefetching/
+│   │
 │   ├── combined/
-│   └── mesi_in/
-│       ├── MESI_IN.py
-│       ├── x86-parsec-benchmarks_MESI_IN.py
-│       ├── x86-parsec-benchmarks_MESI_IN_16core.py
-│       └── x86-parsec-benchmarks_MESI_IN_2core.py
+│   │
+│   ├── mesi_in/
+│   │   ├── MESI_IN.py
+│   │   ├── x86-parsec-benchmarks_MESI_IN.py
+│   │   ├── x86-parsec-benchmarks_MESI_IN_16core.py
+│   │   └── x86-parsec-benchmarks_MESI_IN_2core.py
+│   │
+│   └── deprecated/
+│       └── example/
+│           └── gem5_library/
+│               ├── x86-parsec-benchmarks_adaptive_16core.py
+│               └── x86-parsec-benchmarks_AP_MESI_IN_16core.py
 │
 ├── scripts/
 │   ├── README.md
@@ -108,6 +117,7 @@ Power-analysis-of-Multicore-architectures/
 │
 ├── source/
 │   ├── GEM5_BASE_REVISION.txt
+│   │
 │   ├── gem5-overlay/
 │   │   └── src/
 │   │       ├── mem/
@@ -115,6 +125,34 @@ Power-analysis-of-Multicore-architectures/
 │   │       │       ├── protocol/
 │   │       │       └── structures/
 │   │       └── python/
+│   │
+│   ├── adaptive_prefetcher_overlay/
+│   │   ├── README.md
+│   │   └── src/
+│   │       ├── mem/
+│   │       │   └── ruby/
+│   │       │       ├── protocol/
+│   │       │       │   ├── MESI_IN-L1cache.sm
+│   │       │       │   └── MESI_Two_Level-L1cache.sm
+│   │       │       │
+│   │       │       └── structures/
+│   │       │           ├── RubyPrefetcher.cc
+│   │       │           ├── RubyPrefetcher.hh
+│   │       │           └── RubyPrefetcher.py
+│   │       │
+│   │       └── python/
+│   │           └── gem5/
+│   │               └── components/
+│   │                   └── cachehierarchies/
+│   │                       └── ruby/
+│   │                           ├── mesi_two_level_cache_hierarchy.py
+│   │                           ├── mesi_in_cache_hierarchy.py
+│   │                           └── caches/
+│   │                               ├── mesi_two_level/
+│   │                               │   └── l1_cache.py
+│   │                               └── mesi_in/
+│   │                                   └── l1_cache.py
+│   │
 │   └── patches/
 │       └── gem5-research-changes.patch
 │
