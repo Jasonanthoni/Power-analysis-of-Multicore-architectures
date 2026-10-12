@@ -59,6 +59,7 @@ class L1Cache(MESI_IN_L1Cache_Controller):
         cache_line_size,
         target_isa: ISA,
         clk_domain: ClockDomain,
+        enable_prefetch: bool = False,
     ):
         """Creating L1 cache controller. Consist of both instruction
         and data cache.
@@ -87,7 +88,7 @@ class L1Cache(MESI_IN_L1Cache_Controller):
         self.prefetcher = RubyPrefetcher(block_size=self._cache_line_size)
         self.send_evictions = core.requires_send_evicts()
         self.transitions_per_cycle = 4
-        self.enable_prefetch = False
+        self.enable_prefetch = enable_prefetch
 
     def connectQueues(self, network):
         self.mandatoryQueue = MessageBuffer()

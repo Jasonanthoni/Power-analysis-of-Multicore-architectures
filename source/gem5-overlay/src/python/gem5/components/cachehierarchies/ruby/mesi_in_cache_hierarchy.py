@@ -70,6 +70,7 @@ class MESIINCacheHierarchy(
         l2_size: str,
         l2_assoc: int,
         num_l2_banks: int,
+        enable_prefetch: bool = False,
     ):
         AbstractRubyCacheHierarchy.__init__(self=self)
         AbstractTwoLevelCacheHierarchy.__init__(
@@ -83,6 +84,7 @@ class MESIINCacheHierarchy(
         )
 
         self._num_l2_banks = num_l2_banks
+        self._enable_prefetch = enable_prefetch
 
     @overrides(AbstractCacheHierarchy)
     def get_coherence_protocol(self):
@@ -113,6 +115,7 @@ class MESIINCacheHierarchy(
                 cache_line_size,
                 board.processor.get_isa(),
                 board.get_clock_domain(),
+                enable_prefetch=self._enable_prefetch,
             )
 
             cache.sequencer = RubySequencer(
